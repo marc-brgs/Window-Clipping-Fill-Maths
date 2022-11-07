@@ -67,12 +67,15 @@ public class GameManager : MonoBehaviour
         Debug.Log(mouseWorldPosition);
     }
 
-    public void ClipPolygon()
+    public void ClipPolygon(int method) // 0 = cyrus beck | 1 = sutherland
     {
         if (drawingPolygon || drawingWindow) return; // Wait for fully drawn polygons
         Debug.Log("Clip");
-
-        SutherlandHodgmann();
+        
+        if(method == 0)
+            CyrusBeck();
+        else
+            SutherlandHodgmann();
     }
 
     public void CyrusBeck()
