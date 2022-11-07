@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
+using UnityEditor.Build.Content;
 using UnityEditor.TextCore.Text;
 using UnityEngine;
 
@@ -70,6 +71,8 @@ public class GameManager : MonoBehaviour
     {
         if (drawingPolygon || drawingWindow) return; // Wait for fully drawn polygons
         Debug.Log("Clip");
+
+        SutherlandHodgmann();
     }
 
     public void CyrusBeck()
@@ -79,7 +82,119 @@ public class GameManager : MonoBehaviour
     
     public void SutherlandHodgmann()
     {
+        // Recover data
+        int N1 = lrPolygon.positionCount;
+        Vector3[] PL = new Vector3[N1];
+        lrPolygon.GetPositions(PL);
+        // Debug.Log(PL);
+        int N3 = lrWindow.positionCount;
+        Vector3[] PW = new Vector3[N3];
+        lrWindow.GetPositions(PW);
+
+        Vector3 S = new Vector3();
+        Vector3 F = new Vector3();
+        Vector3 I; // point d'intersection
         
+        int N2;
+        List<Vector3> PS;
+
+        for (int i = 1; i < N3-1; i++)
+        {
+            N2 = 0;
+            PS = new List<Vector3>();
+
+            for (int j = 1; j < N1; j++)
+            {
+                if (j == 1)
+                    F = PL[j]; /* Sauver le premier = dernier sommet */
+                else
+                {
+                    if(coupe(S, PL[j], PW[i], PW[i+1]))
+                    {
+                        I = intersection(S, PL[j], PW[i], PW[i + 1]);
+                        PS.Add(I);
+                        N2++;
+                    }
+                }
+
+                S = PL[j];
+                if(visible(S, PW[i], PW[i+1])) {
+                    PS.Add(S);
+                    N2++;
+                }
+            }
+
+            if (N2 > 0)
+            {
+                /* Traitement du dernier côté de PL */
+                if(coupe(S, F, PW[i], PW[i+1]))
+                {
+                    I = intersection(S, F, PW[i], PW[i + 1]);
+                    PS.Add(I);
+                    N2++;
+                }
+                
+                /* Découpage pour chacun des polygones */
+                lrPolygon.positionCount = N2;
+                Vector3[] ArrayPS = PS.ToArray();
+                lrPolygon.SetPositions(ArrayPS);
+                
+                PL = ArrayPS;
+                N1 = N2;
+            }
+
+            
+        }
+    }
+
+    private bool coupe(Vector3 a1, Vector3 a2, Vector3 b1, Vector3 b2)
+    {
+        Vector3 b = a2 - a1;
+        Vector3 d = b2 - b1;
+        float bDotDPerp = b.x * d.y - b.y * d.x;
+
+        // if b dot d == 0, it means the lines are parallel so have infinite intersection points
+        if (bDotDPerp == 0)
+            return false;
+
+        Vector3 c = b1 - a1;
+        float t = (c.x * d.y - c.y * d.x) / bDotDPerp;
+        if (t < 0 || t > 1)
+            return false;
+
+        float u = (c.x * b.y - c.y * b.x) / bDotDPerp;
+        if (u < 0 || u > 1)
+            return false;
+        
+        return true;
+    }
+
+    private Vector3 intersection(Vector3 a1, Vector3 a2, Vector3 b1, Vector3 b2)
+    {
+        Vector3 intersection;
+
+        Vector3 b = a2 - a1;
+        Vector3 d = b2 - b1;
+        float bDotDPerp = b.x * d.y - b.y * d.x;
+
+        Vector3 c = b1 - a1;
+        float t = (c.x * d.y - c.y * d.x) / bDotDPerp;
+
+        intersection = a1 + (b * t);
+        return intersection;
+    }
+
+    private bool visible(Vector3 S, Vector3 F1, Vector3 F2)
+    {
+        return true;
+        Vector2 n = new Vector2(-(F2.y - F1.y), F2.x - F1.x);
+        Vector2 m = new Vector2(-n.x, -n.y);
+        if(Vector3.Dot(n, S) > 0) // dedans
+            return true;
+        else if(Vector3.Dot(n, S) < 0) // dehors
+            return false;
+        else // sur le bord de la fenêtre
+            return true;
     }
     
     private void drawWindow()
