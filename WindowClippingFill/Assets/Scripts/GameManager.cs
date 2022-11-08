@@ -106,12 +106,12 @@ public class GameManager : MonoBehaviour
         int N2;
         List<Vector3> PS;
 
-        for (int i = 1; i < N3-1; i++)
+        for (int i = 0; i < N3-1; i++) // i = 1 dans l'algo
         {
             N2 = 0;
             PS = new List<Vector3>();
 
-            for (int j = 1; j < N1; j++)
+            for (int j = 0; j < N1; j++) // j = 1 dans l'algo
             {
                 if (j == 1)
                     F = PL[j]; /* Sauver le premier = dernier sommet */
