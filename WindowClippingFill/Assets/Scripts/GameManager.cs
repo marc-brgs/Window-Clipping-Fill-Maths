@@ -113,7 +113,7 @@ public class GameManager : MonoBehaviour
 
             for (int j = 0; j < N1; j++) // j = 1 dans l'algo
             {
-                if (j == 1)
+                if (j == 0)
                     F = PL[j]; /* Sauver le premier = dernier sommet */
                 else
                 {
