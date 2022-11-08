@@ -194,8 +194,8 @@ public class GameManager : MonoBehaviour
 
     private bool visible(Vector3 S, Vector3 F1, Vector3 F2)
     {
-        Vector2 midF = new Vector2(F1.x + F2.x, F1.y+ F2.y) / 2;
-        Vector2 midToS = new Vector2(S.x - midF.x, S.y - midF.y);
+        // Vector2 midF = new Vector2(F1.x + F2.x, F1.y+ F2.y) / 2;
+        Vector2 midToS = new Vector2(S.x - F1.x, S.y - F1.y);
         
         Vector2 n = new Vector2(-(F2.y - F1.y), F2.x - F1.x);
         Vector2 m = -n;
