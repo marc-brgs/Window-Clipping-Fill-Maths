@@ -33,8 +33,13 @@ public class GameManager : MonoBehaviour
         drawingWindow = true;
         polygonIndex = 0;
         windowIndex = 0;
+        
+        Debug.Log("(0,1) à (1,1)(1,-1) " + visible(new Vector3(0f, 1f, 0f), new Vector3(1f, 1f, 0f), new Vector3(1f, -1f, 0f)));
+        Debug.Log("(3,1) à (1,1)(1,-1) " + visible(new Vector3(0f, 1f, 0f), new Vector3(1f, 1f, 0f), new Vector3(1f, -1f, 0f)));
+        Debug.Log("(0,1) à (1,-1)(1,1) " + visible(new Vector3(0f, 1f, 0f), new Vector3(1f, -1f, 0f), new Vector3(1f, 1f, 0f)));
+        Debug.Log("(3,1) à (1,-1)(1,1) " + visible(new Vector3(0f, 1f, 0f), new Vector3(1f, -1f, 0f), new Vector3(1f, 1f, 0f)));
     }
-
+    
     // Update is called once per frame
     void Update()
     {
@@ -189,15 +194,21 @@ public class GameManager : MonoBehaviour
 
     private bool visible(Vector3 S, Vector3 F1, Vector3 F2)
     {
-        return true;
+        Vector2 midF = new Vector2(F1.x + F2.x, F1.y+ F2.y) / 2;
+        Vector2 midToS = new Vector2(S.x - midF.x, S.y - midF.y);
+        
         Vector2 n = new Vector2(-(F2.y - F1.y), F2.x - F1.x);
-        Vector2 m = new Vector2(-n.x, -n.y);
-        if(Vector3.Dot(n, S) > 0) // dedans
+        Vector2 m = -n;
+        
+        Debug.Log(n);
+        Debug.Log(Vector2.Dot(n, midToS));
+        
+        if(Vector3.Dot(n, midToS) < 0) // dedans
             return true;
-        else if(Vector3.Dot(n, S) < 0) // dehors
+        if(Vector3.Dot(n, midToS) > 0) // dehors
             return false;
-        else // sur le bord de la fenêtre
-            return true;
+        // sur le bord de la fenêtre
+        return true;
     }
     
     private void drawWindow()
