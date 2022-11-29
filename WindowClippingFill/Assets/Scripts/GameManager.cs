@@ -206,8 +206,8 @@ public class GameManager : MonoBehaviour
         Vector2 n = new Vector2(-(F2.y - F1.y), F2.x - F1.x);
         Vector2 m = -n;
         
-        Debug.Log(n);
-        Debug.Log(Vector2.Dot(n, midToS));
+        // Debug.Log(n);
+        // Debug.Log(Vector2.Dot(n, midToS));
         
         if(Vector3.Dot(n, midToS) < 0) // dedans
             return true;
