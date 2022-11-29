@@ -24,6 +24,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] private GameObject textWindow;
     
     [SerializeField] private Image img;
+    private Color fillColor;
 
     // Start is called before the first frame update
     void Start()
@@ -35,13 +36,9 @@ public class GameManager : MonoBehaviour
         polygonIndex = 0;
         windowIndex = 0;
         
-        Debug.Log("(0,1) à (1,1)(1,-1) " + visible(new Vector3(0f, 1f, 0f), new Vector3(1f, 1f, 0f), new Vector3(1f, -1f, 0f)));
-        Debug.Log("(3,1) à (1,1)(1,-1) " + visible(new Vector3(0f, 1f, 0f), new Vector3(1f, 1f, 0f), new Vector3(1f, -1f, 0f)));
-        Debug.Log("(0,1) à (1,-1)(1,1) " + visible(new Vector3(0f, 1f, 0f), new Vector3(1f, -1f, 0f), new Vector3(1f, 1f, 0f)));
-        Debug.Log("(3,1) à (1,-1)(1,1) " + visible(new Vector3(0f, 1f, 0f), new Vector3(1f, -1f, 0f), new Vector3(1f, 1f, 0f)));
-        
         img.gameObject.SetActive(false);
         clearTexture(img.sprite.texture);
+        fillColor = Color.yellow;
     }
     
     // Update is called once per frame
@@ -69,15 +66,7 @@ public class GameManager : MonoBehaviour
             clearTexture(img.sprite.texture);
         }
     }
-
-    void PrintMousePosition()
-    {
-        // Print 2D mouse position to world pos
-        Vector3 mouseWorldPosition = mainCamera.ScreenToWorldPoint(Input.mousePosition);
-        mouseWorldPosition.z = 0f;
-        Debug.Log(mouseWorldPosition);
-    }
-
+    
     public void ClipPolygon(int method) // 0 = cyrus beck | 1 = sutherland
     {
         if (drawingPolygon || drawingWindow) return; // Wait for fully drawn polygons
@@ -94,13 +83,16 @@ public class GameManager : MonoBehaviour
         
     }
     
+    /**
+     * Clip polygon to window (polygon must be convex and drawn clockwise)
+     */
     public void SutherlandHodgmann()
     {
         // Recover data
         int N1 = lrPolygon.positionCount;
         Vector3[] PL = new Vector3[N1];
         lrPolygon.GetPositions(PL);
-        // Debug.Log(PL);
+        
         int N3 = lrWindow.positionCount;
         Vector3[] PW = new Vector3[N3];
         lrWindow.GetPositions(PW);
@@ -161,6 +153,10 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    /**
+     * Determine if 2 sides are intersecting
+     * Used by Sutherland algorithm
+     */
     private bool coupe(Vector3 a1, Vector3 a2, Vector3 b1, Vector3 b2)
     {
         Vector3 b = a2 - a1;
@@ -183,6 +179,10 @@ public class GameManager : MonoBehaviour
         return true;
     }
 
+    /**
+     * Return the intersection point of 2 sides
+     * Used by Sutherland algorithm
+     */
     private Vector3 intersection(Vector3 a1, Vector3 a2, Vector3 b1, Vector3 b2)
     {
         Vector3 intersection;
@@ -197,17 +197,17 @@ public class GameManager : MonoBehaviour
         intersection = a1 + (b * t);
         return intersection;
     }
-
+    
+    /*
+     * Determine if a point is inside of a side of polygon with clockwise normal
+     * Used by Sutherland and RemplissageRectEG algorithms
+     */
     private bool visible(Vector3 S, Vector3 F1, Vector3 F2)
     {
-        // Vector2 midF = new Vector2(F1.x + F2.x, F1.y+ F2.y) / 2;
         Vector2 midToS = new Vector2(S.x - F1.x, S.y - F1.y);
         
         Vector2 n = new Vector2(-(F2.y - F1.y), F2.x - F1.x);
         Vector2 m = -n;
-        
-        // Debug.Log(n);
-        // Debug.Log(Vector2.Dot(n, midToS));
         
         if(Vector3.Dot(n, midToS) < 0) // dedans
             return true;
@@ -217,8 +217,43 @@ public class GameManager : MonoBehaviour
         return true;
     }
     
+    /*
+     * Reset sprite texture used for filling to transparent
+     */
+    private void clearTexture(Texture2D tex)
+    {
+        for (int x = 0; x < tex.width; x++)
+        {
+            for (int y = 0; y < tex.height; y++)
+            {
+                tex.SetPixel(x, y, Color.clear);
+            }
+        }
+        tex.Apply();
+    }
+    
+    public void ChangeColor(int color=0)
+    {
+        switch (color)
+        {
+            case 0:
+                fillColor = Color.yellow;
+                break;
+            case 1:
+                fillColor = Color.magenta;
+                break;
+            case 2:
+                fillColor = Color.green;
+                break;
+            case 3:
+                fillColor = Color.cyan;
+                break;
+        }
+        RemplissageRectEG();
+    }
+    
     // Remplissage RectEG
-    public void remplissageRectEG()
+    public void RemplissageRectEG()
     {
         // Recover data
         Vector3[] Poly = new Vector3[lrPolygon.positionCount];
@@ -246,21 +281,12 @@ public class GameManager : MonoBehaviour
         img.gameObject.SetActive(true);
     }
 
-    private void clearTexture(Texture2D tex)
-    {
-        for (int x = 0; x < tex.width; x++)
-        {
-            for (int y = 0; y < tex.height; y++)
-            {
-                tex.SetPixel(x, y, Color.clear);
-            }
-        }
-        tex.Apply();
-    }
-    
+    /*
+     * Used by RemplissageRectEG to determine x y min max for pixel loop optimization
+     */
     private Vector2[] rectangleEnglobant(Vector3[] Poly)
     {
-        int xmin = 1920, xmax = 0, ymin = 1080, ymax = 0;
+        int xmin = Screen.width, xmax = 0, ymin = Screen.height, ymax = 0;
         
         for (int i = 0; i < Poly.Length; i++)
         {
@@ -283,9 +309,12 @@ public class GameManager : MonoBehaviour
         return rectEG;
     }
 
+    /*
+     * Used by RemplissageRectEG to determine if a point is inside polygon
+     */
     private bool interieur(int x, int y, Vector3[] poly)
     {
-        // visible pour chaque côté
+        // Only working for convex polygons
         for (int i = 0; i < poly.Length-1; i++)
         {
             if(!visible(new Vector3(x, y), new Vector3(worldPosXToPixel(poly[i].x), worldPosYToPixel(poly[i].y)), new Vector3(worldPosXToPixel(poly[i+1].x), worldPosYToPixel(poly[i+1].y)))) 
@@ -295,21 +324,33 @@ public class GameManager : MonoBehaviour
         return true;
     }
 
+    /*
+     * Change pixel color of sprite texture used for filling display
+     */
     private void affichePixel(int x, int y)
     {
-        img.sprite.texture.SetPixel(x, y, Color.yellow);
+        img.sprite.texture.SetPixel(x, y, fillColor);
     }
     
+    /*
+     * Convert world position x axis value to pixel
+     */
     private int worldPosXToPixel(float v)
     {
-        return (int) (((v + 5.33) * 1920) / 10.66);
+        return (int) (((v + 5.33) * Screen.width) / 10.66);
     }
     
+    /*
+     * Convert world position y axis value to pixel
+     */
     private int worldPosYToPixel(float v)
     {
-        return (int) (((v + 3) * 1080) / 6);
+        return (int) (((v + 3) * Screen.height) / 6);
     }
     
+    /*
+     * Click actions event for drawing window
+     */
     private void drawWindow()
     {
         if (Input.GetMouseButtonDown(0))
@@ -333,6 +374,9 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    /*
+     * Click actions event for drawing polygon
+     */
     private void drawPolygon()
     {
         if (Input.GetMouseButtonDown(0))
@@ -351,27 +395,6 @@ public class GameManager : MonoBehaviour
             polygonIndex++;
             drawingPolygon = false;
             textPolygon.SetActive(false);
-        }
-    }
-    
-    public static void DrawLine(Vector2 p1, Vector2 p2, Color col)
-    {
-        Vector2 t = p1;
-        float frac = 1/Mathf.Sqrt (Mathf.Pow (p2.x - p1.x, 2) + Mathf.Pow (p2.y - p1.y, 2));
-        float ctr = 0;
-     
-        while ((int)t.x != (int)p2.x || (int)t.y != (int)p2.y) {
-            t = Vector2.Lerp(p1, p2, ctr);
-            ctr += frac;
-            // img.sprite.texture.SetPixel((int)t.x, (int)t.y, col);
-        }
-    }
-
-    public void drawShape()
-    {
-        for (int i = 0; i < lrPolygon.positionCount - 1; i++)
-        {
-            DrawLine( lrPolygon.GetPosition(i), lrPolygon.GetPosition(i+1), Color.blue);
         }
     }
 }
