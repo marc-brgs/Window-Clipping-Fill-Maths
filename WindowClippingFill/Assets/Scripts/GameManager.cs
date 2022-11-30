@@ -76,6 +76,8 @@ public class GameManager : MonoBehaviour
             CyrusBeck();
         else
             SutherlandHodgmann();
+        
+        clearTexture(img.sprite.texture);
     }
 
     public void CyrusBeck()
