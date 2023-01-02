@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -31,6 +32,8 @@ public class GameManager : MonoBehaviour
     {
         lrPolygon = polygon.GetComponent<LineRenderer>();
         lrWindow = window.GetComponent<LineRenderer>();
+        //lrPolygon.loop = true;
+        //lrWindow.loop = true;
         drawingPolygon = false;
         drawingWindow = true;
         polygonIndex = 0;
@@ -80,7 +83,94 @@ public class GameManager : MonoBehaviour
 
     public void CyrusBeck()
     {
+        // Recover data
+        int N1 = lrPolygon.positionCount;
+        Vector3[] Poly = new Vector3[N1];
+        lrPolygon.GetPositions(Poly);
         
+        int N3 = lrWindow.positionCount;
+        Vector3[] Window = new Vector3[N3];
+        lrWindow.GetPositions(Window);
+
+        Vector3[] Normale = new Vector3[N3];
+        Vector3[] Poly_copy = new Vector3[N1];
+
+        int idx = 0;
+
+        for(int i = 0; i < Window.Length-1; i++)
+        {
+            Normale[i] = new Vector3(Window[i + 1][1] - Window[i][1], -(Window[i + 1][0] - Window[i][0]), 0);
+        }
+
+        float X1, Y1, X2, Y2, t, DX, DY, WN, DN;
+        int Nbsom = Window.Length-1;
+        Vector3 C;
+
+        for (var i = 0; i < Poly.Length - 1; i++)
+        {
+            float tinf = Single.MinValue, tsup = Single.MaxValue;
+
+            X1 = Poly[i][0];
+            Y1 = Poly[i][1];
+            X2 = Poly[i+1][0];
+            Y2 = Poly[i+1][1];
+
+            DX = X2 - X1;
+            DY = Y2 - Y1;
+            for (int j = 0; j < Nbsom; j++)
+            {
+                C = Window[j];
+                DN = DX * Normale[j][0] + DY * Normale[j][1];
+                WN = (X1 - C[0]) * Normale[j][0] + (Y1 - C[1]) * Normale[j][1];
+
+                if (DN == 0)
+                {
+                    return;
+                }
+                else
+                {
+                    t = -WN / DN;
+                    if (DN > 0)
+                    {
+                        if (t > tinf)
+                            tinf = t;
+                    }
+                    else
+                    {
+                        if (t < tsup)
+                            tsup = t;
+                    }
+                }
+            }
+
+            if (tinf < tsup)
+            {
+                if (tinf < 0)
+                {
+                    tinf = 0;
+                }
+                else
+                {
+                    if (tsup > 1)
+                    {
+                        tsup = 1;
+                    }
+                }
+
+                X2 = X1 + DX * tsup;
+                Y2 = Y1 + DY * tsup;
+                X1 += DX * tinf;
+                Y1 += DY * tinf;
+
+                Poly_copy[idx] = new Vector3(X1, Y1, 0);
+                idx++;
+                Poly_copy[idx] = new Vector3(X2, Y2, 0);
+                idx++;
+            }
+
+            idx += 2;
+        }
+        lrPolygon.SetPositions(Poly_copy);
     }
     
     /**
@@ -291,7 +381,7 @@ public class GameManager : MonoBehaviour
         for (int i = 0; i < Poly.Length; i++)
         {
             Vector2 polyPixel = new Vector2(worldPosXToPixel(Poly[i].x), worldPosYToPixel(Poly[i].y));
-            Debug.Log("worldpos: " + Poly[i].x + " " + Poly[i].y + ", pixel: " + worldPosXToPixel(Poly[i].x) + " " + worldPosYToPixel(Poly[i].y));
+            //Debug.Log("worldpos: " + Poly[i].x + " " + Poly[i].y + ", pixel: " + worldPosXToPixel(Poly[i].x) + " " + worldPosYToPixel(Poly[i].y));
             if (polyPixel.x < xmin)
               xmin = (int) polyPixel.x;
             if (polyPixel.x > xmax)
@@ -302,7 +392,7 @@ public class GameManager : MonoBehaviour
                 ymax = (int) polyPixel.y;
         }
         
-        Debug.Log("xmin: " + xmin + ", xmax: " + xmax + ", ymin: " + ymin + ", ymax: " + ymax);
+        //Debug.Log("xmin: " + xmin + ", xmax: " + xmax + ", ymin: " + ymin + ", ymax: " + ymax);
         Vector2[] rectEG = new Vector2[2];
         rectEG[0] = new Vector2(xmin, ymin); // P1
         rectEG[1] = new Vector2(xmax, ymax); // P2
