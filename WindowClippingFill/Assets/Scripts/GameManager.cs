@@ -79,6 +79,8 @@ public class GameManager : MonoBehaviour
             CyrusBeck();
         else
             SutherlandHodgmann();
+        
+        clearTexture(img.sprite.texture);
     }
 
     public void CyrusBeck()
@@ -234,6 +236,13 @@ public class GameManager : MonoBehaviour
                 lrPolygon.positionCount = N2;
                 Vector3[] ArrayPS = PS.ToArray();
                 lrPolygon.SetPositions(ArrayPS);
+                
+                /* Ferme le polygone si non fermé */
+                if(ArrayPS[0] != ArrayPS[ArrayPS.Length - 1])
+                {
+                    lrPolygon.positionCount++;
+                    lrPolygon.SetPosition(lrPolygon.positionCount-1, lrPolygon.GetPosition(0));
+                }
                 
                 PL = ArrayPS;
                 N1 = N2;
