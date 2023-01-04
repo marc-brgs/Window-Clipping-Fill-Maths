@@ -329,6 +329,15 @@ public class GameManager : MonoBehaviour
             }
         }
         tex.Apply();
+        
+        // Obtenir tous les gameobjects qui s'appellent "Line"
+        GameObject[] lines = GameObject.FindGameObjectsWithTag("Line");
+
+        // Détruire chaque gameobject
+        foreach (GameObject line in lines)
+        {
+            Destroy(line);
+        }
     }
     
     public void ChangeColor(int color=0)
@@ -559,7 +568,7 @@ public class GameManager : MonoBehaviour
                 }
 
                 // Tracer la ligne parallèle
-                DrawLine(start, end, Color.red);
+                DrawLine(start, end, Color.green);
             }
         }
     }
@@ -729,6 +738,7 @@ public class GameManager : MonoBehaviour
     {
         // Créer un nouvel objet "Line"
         GameObject line = new GameObject("Line");
+        line.tag = "Line";
 
         // Ajouter un composant LineRenderer à l'objet
         LineRenderer lr = line.AddComponent<LineRenderer>();
