@@ -496,4 +496,250 @@ public class GameManager : MonoBehaviour
             textPolygon.SetActive(false);
         }
     }
+
+    /**
+     * Remplissage par ligne
+     */
+    public void RemplissageLigne()
+    {
+        // Liste des points du polygone
+        Vector3[] points = new Vector3[lrPolygon.positionCount];
+        lrPolygon.GetPositions(points);
+
+        // Trier les points par angle polaire croissant
+        points = SortPointsByPolarAngle(points);
+
+        // Tracer une ligne entre chaque paire de points consécutifs
+        for (int i = 0; i < points.Length - 1; i++)
+        {
+            DrawLine(points[i], points[i + 1], Color.red);
+        }
+
+        // Tracer une ligne entre le dernier et le premier point pour fermer le polygone
+        DrawLine(points[points.Length - 1], points[0], Color.red);
+    }
+
+    public void RemplissageLigne2()
+    {
+        Vector3[] points = new Vector3[lrPolygon.positionCount];
+        lrPolygon.GetPositions(points);
+        points = SortPointsByPolarAngle(points);
+
+        // Inverser l'ordre des points
+        Array.Reverse(points);
+
+        // Nombre de lignes parallèles à tracer
+        int numLines = 5;
+
+        // Distance entre chaque ligne parallèle
+        float lineSpacing = 0.1f;
+
+        // Tracer les lignes parallèles
+        for (int i = 0; i < numLines; i++)
+        {
+            // Calculer la distance entre le bord du polygone et la ligne parallèle
+            float distance = lineSpacing * (i + 1);
+
+            // Tracer une ligne parallèle pour chaque point du bord du polygone
+            for (int j = 0; j < points.Length - 1; j++)
+            {
+                // Calculer le vecteur normal au bord du polygone
+                Vector3 normal = Vector3.Cross(points[j + 1] - points[j], Vector3.forward).normalized;
+
+                // Calculer les points de départ et d'arrivée de la ligne parallèle
+                Vector3 start = points[j] + normal * distance;
+                Vector3 end = points[j + 1] + normal * distance;
+
+                // Vérifier si la ligne intersecte un bord du polygone
+                Vector3 intersection = GetLineIntersection(start, end, points[j], points[j + 1]);
+                if (intersection != Vector3.zero)
+                {
+                    // La ligne intersecte un bord du polygone, mettre à jour l'extrémité de la ligne
+                    end = intersection;
+                }
+
+                // Tracer la ligne parallèle
+                DrawLine(start, end, Color.red);
+            }
+        }
+    }
+    
+    Vector3 GetLineIntersection(Vector3 line1Start, Vector3 line1End, Vector3 line2Start, Vector3 line2End)
+    {
+        Vector3 intersection = Vector3.zero;
+
+        // Calculer les vecteurs s et t
+        Vector3 s = line1End - line1Start;
+        Vector3 t = line2End - line2Start;
+
+        // Calculer la valeur de u
+        float u = (-t.y * s.x + s.y * t.x) / (-t.x * s.y + s.x * t.y);
+
+        // Vérifier si les lignes s'intersectent
+        if (u >= 0 && u <= 1)
+        {
+            // Calculer l'intersection
+            intersection = line1Start + u * s;
+        }
+
+        return intersection;
+    }
+
+    
+    public void RemplissageLigne3()
+    {
+        Vector3[] points = new Vector3[lrPolygon.positionCount];
+        lrPolygon.GetPositions(points);
+        points = SortPointsByPolarAngle(points);
+        
+        // Créer une RenderTexture temporaire pour stocker le rendu de la caméra
+        RenderTexture tempRenderTexture = new RenderTexture(Screen.width, Screen.height, 24);
+        mainCamera.targetTexture = tempRenderTexture;
+        mainCamera.Render();
+
+        // Créer un texture2D vide pour stocker les pixels lus depuis la RenderTexture
+        Texture2D texture = new Texture2D(Screen.width, Screen.height, TextureFormat.ARGB32, false);
+
+        // Lire les pixels de la RenderTexture dans le texture2D
+        Rect rect = new Rect(0, 0, Screen.width, Screen.height);
+        texture.ReadPixels(rect, (int)points[0].x, (int)points[0].y);
+        texture.Apply();
+        
+        Color CC = Color.red, CR = Color.blue;
+        int x = 0, y = 0;
+        // Couleur pixel courant, droite et gauche
+        Color CP, CPd, CPg;
+
+        // Pile pour stocker les germes
+        Stack<Vector2Int> p = new Stack<Vector2Int>();
+
+        // Abscisses extrêmes droite et gauche de la ligne de balayage
+        int xd, xg;
+
+        // Empiler le germe (x,y)
+        p.Push(new Vector2Int(x, y));
+
+        // Tant qu'il y a des germes à traiter
+        while (p.Count > 0)
+        {
+            // Récupérer le sommet de la pile
+            Vector2Int point = p.Peek();
+            x = point.x;
+            y = point.y;
+
+            // Dépiler le germe
+            p.Pop();
+
+            // Récupérer la couleur du pixel courant
+            CP = texture.GetPixel(x, y);
+
+            // Rechercher xd : extrême à droite
+            xd = x + 1;
+            CPd = texture.GetPixel(xd, y);
+            while (CPd != CC && xd < texture.width)
+            {
+                xd++;
+                CPd = texture.GetPixel(xd, y);
+            }
+            xd--;
+
+            // Rechercher xg : extrême à gauche
+            xg = x - 1;
+            CPg = CP;
+            while (CPg != CC && xg >= 0)
+            {
+                xg--;
+                CPg = texture.GetPixel(xg, y);
+            }
+            xg++;
+
+            // Tracer la ligne de balayage de xg à xd avec la couleur CR
+            DrawLine(new Vector3(xg, y, 0), new Vector3(xd, y, 0), CR);
+
+            // Rechercher de nouveaux germes sur la ligne de balayage au-dessus
+            x = xd;
+            CP = texture.GetPixel(x, y + 1);
+            while (x > xg)
+            {
+                while (((CP == CC) || (CP == CR)) && (x > xg))
+                {
+                    x--;
+                    CP = texture.GetPixel(x, y + 1);
+                }
+                if ((x > xg) && (CP != CC) && (CP != CR))
+                {
+                    // Empiler le nouveau germe au-dessus trouvé
+                    p.Push(new Vector2Int(x, y + 1));
+                }
+                while ((CP != CC) && (x > xg))
+                {
+                    x--;
+                    CP = texture.GetPixel(x, y + 1);
+                }
+            }
+
+            // Rechercher de nouveaux germes sur la ligne de balayage au-dessous
+            x = xd;
+            CP = texture.GetPixel(x, y - 1);
+            while (x > xg)
+            {
+                while (CP == CC)
+                {
+                    while ((CP != CC) && (x > xg))
+                    {
+                        x--;
+                        CP = texture.GetPixel(x, y - 1);
+                    }
+                }
+            }
+        }
+    }
+
+
+
+    
+    /**
+     * Tri les points par angle polaire
+     */
+    Vector3[] SortPointsByPolarAngle(Vector3[] points)
+    {
+        // Trouver le point le plus à gauche (avec le plus petit abscisse)
+        int minXIndex = 0;
+        for (int i = 1; i < points.Length; i++)
+        {
+            if (points[i].x < points[minXIndex].x)
+            {
+                minXIndex = i;
+            }
+        }
+
+        // Déplacer le point le plus à gauche en tête de liste
+        (points[0], points[minXIndex]) = (points[minXIndex], points[0]);
+
+        // Trier les points restants par angle polaire croissant
+        Array.Sort(points, 1, points.Length - 1, new PolarAngleComparer(points[0]));
+
+        return points;
+    }
+    
+    /**
+     * Remplir une ligne
+     */
+    void DrawLine(Vector3 start, Vector3 end, Color color)
+    {
+        // Créer un nouvel objet "Line"
+        GameObject line = new GameObject("Line");
+
+        // Ajouter un composant LineRenderer à l'objet
+        LineRenderer lr = line.AddComponent<LineRenderer>();
+
+        // Configurer le LineRenderer
+        lr.material = new Material(Shader.Find("Sprites/Default"));
+        lr.startColor = color;
+        lr.endColor = color;
+        lr.startWidth = 0.1f;
+        lr.endWidth = 0.1f;
+        lr.SetPosition(0, start);
+        lr.SetPosition(1, end);
+    }
 }
