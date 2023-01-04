@@ -85,94 +85,97 @@ public class GameManager : MonoBehaviour
 
     public void CyrusBeck()
     {
-        // Recover data
         int N1 = lrPolygon.positionCount;
-        Vector3[] Poly = new Vector3[N1];
-        lrPolygon.GetPositions(Poly);
+        Vector3[] PL = new Vector3[N1];
+        lrPolygon.GetPositions(PL);
         
         int N3 = lrWindow.positionCount;
-        Vector3[] Window = new Vector3[N3];
-        lrWindow.GetPositions(Window);
+        Vector3[] PW = new Vector3[N3];
+        lrWindow.GetPositions(PW);
 
-        Vector3[] Normale = new Vector3[N3];
-        Vector3[] Poly_copy = new Vector3[N1];
-
-        int idx = 0;
-
-        for(int i = 0; i < Window.Length-1; i++)
+        List<Vector3> subjectPolygon = new List<Vector3>(PL);
+        subjectPolygon.RemoveAt(subjectPolygon.Count - 1);
+        List<Vector3> clipPolygon = new List<Vector3>(PW);
+        clipPolygon.RemoveAt(subjectPolygon.Count - 1);
+        List<Vector3> result = CyrusBeckCompute.ClipPolygon(subjectPolygon, clipPolygon);
+        // result.RemoveRange(0, subjectPolygon.Count);
+        Debug.Log(result.Count);
+        lrPolygon.SetPositions(result.ToArray());
+    }
+    
+    public static class CyrusBeckCompute
+    {
+        public static List<Vector3> ClipPolygon(List<Vector3> subjectPolygon, List<Vector3> clipPolygon)
         {
-            Normale[i] = new Vector3(Window[i + 1][1] - Window[i][1], -(Window[i + 1][0] - Window[i][0]), 0);
-        }
+            List<Vector3> outputList = subjectPolygon;
+            int clipPolygonLength = clipPolygon.Count;
 
-        float X1, Y1, X2, Y2, t, DX, DY, WN, DN;
-        int Nbsom = Window.Length-1;
-        Vector3 C;
-
-        for (var i = 0; i < Poly.Length - 1; i++)
-        {
-            float tinf = Single.MinValue, tsup = Single.MaxValue;
-
-            X1 = Poly[i][0];
-            Y1 = Poly[i][1];
-            X2 = Poly[i+1][0];
-            Y2 = Poly[i+1][1];
-
-            DX = X2 - X1;
-            DY = Y2 - Y1;
-            for (int j = 0; j < Nbsom; j++)
+            for (int i = 0; i < clipPolygonLength; i++)
             {
-                C = Window[j];
-                DN = DX * Normale[j][0] + DY * Normale[j][1];
-                WN = (X1 - C[0]) * Normale[j][0] + (Y1 - C[1]) * Normale[j][1];
+                Vector3 A = clipPolygon[i];
+                Vector3 B = clipPolygon[(i + 1) % clipPolygonLength];
 
-                if (DN == 0)
+                List<Vector3> inputList = outputList;
+                //outputList = new List<Vector3>();
+
+                int inputListLength = inputList.Count;
+                Vector3 S = inputList[inputListLength - 1];
+
+                for (int j = 0; j < inputListLength; j++)
                 {
-                    return;
-                }
-                else
-                {
-                    t = -WN / DN;
-                    if (DN > 0)
+                    Vector3 E = inputList[j];
+
+                    if (IsInside(A, B, E))
                     {
-                        if (t > tinf)
-                            tinf = t;
+                        if (!IsInside(A, B, S))
+                        {
+                            outputList.Add(ComputeIntersection(A, B, S, E));
+                        }
+
+                        outputList.Add(E);
                     }
-                    else
+                    else if (IsInside(A, B, S))
                     {
-                        if (t < tsup)
-                            tsup = t;
+                        outputList.Add(ComputeIntersection(A, B, S, E));
                     }
+
+                    S = E;
                 }
             }
 
-            if (tinf < tsup)
-            {
-                if (tinf < 0)
-                {
-                    tinf = 0;
-                }
-                else
-                {
-                    if (tsup > 1)
-                    {
-                        tsup = 1;
-                    }
-                }
-
-                X2 = X1 + DX * tsup;
-                Y2 = Y1 + DY * tsup;
-                X1 += DX * tinf;
-                Y1 += DY * tinf;
-
-                Poly_copy[idx] = new Vector3(X1, Y1, 0);
-                idx++;
-                Poly_copy[idx] = new Vector3(X2, Y2, 0);
-                idx++;
-            }
-
-            idx += 2;
+            return outputList;
         }
-        lrPolygon.SetPositions(Poly_copy);
+
+        private static bool IsInside(Vector3 A, Vector3 B, Vector3 P)
+        {
+            return (A.x - P.x) * (B.y - P.y) > (A.y - P.y) * (B.x - P.x);
+        }
+
+        private static Vector3 ComputeIntersection(Vector3 A, Vector3 B, Vector3 S, Vector3 E)
+        {
+            float a1 = E.y - S.y;
+            float b1 = S.x - E.x;
+            float c1 = a1 * S.x + b1 * S.y;
+
+            float a2 = B.y - A.y;
+            float b2 = A.x - B.x;
+            float c2 = a2 * A.x + b2 * A.y;
+
+            float determinant = a1 * b2 - a2 * b1;
+
+            if (determinant == 0)
+            {
+                // The lines are parallel.
+                return Vector3.zero;
+            }
+            else
+            {
+                float x = (b2 * c1 - b1 * c2) / determinant;
+                float y = (a1 * c2 - a2 * c1) / determinant;
+
+                return new Vector3(x, y, 0);
+            }
+        }
     }
     
     /**
@@ -532,11 +535,7 @@ public class GameManager : MonoBehaviour
     {
         Vector3[] points = new Vector3[lrPolygon.positionCount];
         lrPolygon.GetPositions(points);
-        points = SortPointsByPolarAngle(points);
-
-        // Inverser l'ordre des points
-        Array.Reverse(points);
-
+        
         // Nombre de lignes parallèles à tracer
         int numLines = 5;
 
