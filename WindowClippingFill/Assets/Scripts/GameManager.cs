@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -82,7 +83,97 @@ public class GameManager : MonoBehaviour
 
     public void CyrusBeck()
     {
+        int N1 = lrPolygon.positionCount;
+        Vector3[] PL = new Vector3[N1];
+        lrPolygon.GetPositions(PL);
         
+        int N3 = lrWindow.positionCount;
+        Vector3[] PW = new Vector3[N3];
+        lrWindow.GetPositions(PW);
+
+        List<Vector3> subjectPolygon = new List<Vector3>(PL);
+        subjectPolygon.RemoveAt(subjectPolygon.Count - 1);
+        List<Vector3> clipPolygon = new List<Vector3>(PW);
+        clipPolygon.RemoveAt(subjectPolygon.Count - 1);
+        List<Vector3> result = CyrusBeckCompute.ClipPolygon(subjectPolygon, clipPolygon);
+        // result.RemoveRange(0, subjectPolygon.Count);
+        Debug.Log(result.Count);
+        lrPolygon.SetPositions(result.ToArray());
+    }
+    
+    public static class CyrusBeckCompute
+    {
+        public static List<Vector3> ClipPolygon(List<Vector3> subjectPolygon, List<Vector3> clipPolygon)
+        {
+            List<Vector3> outputList = subjectPolygon;
+            int clipPolygonLength = clipPolygon.Count;
+
+            for (int i = 0; i < clipPolygonLength; i++)
+            {
+                Vector3 A = clipPolygon[i];
+                Vector3 B = clipPolygon[(i + 1) % clipPolygonLength];
+
+                List<Vector3> inputList = outputList;
+                //outputList = new List<Vector3>();
+
+                int inputListLength = inputList.Count;
+                Vector3 S = inputList[inputListLength - 1];
+
+                for (int j = 0; j < inputListLength; j++)
+                {
+                    Vector3 E = inputList[j];
+
+                    if (IsInside(A, B, E))
+                    {
+                        if (!IsInside(A, B, S))
+                        {
+                            outputList.Add(ComputeIntersection(A, B, S, E));
+                        }
+
+                        outputList.Add(E);
+                    }
+                    else if (IsInside(A, B, S))
+                    {
+                        outputList.Add(ComputeIntersection(A, B, S, E));
+                    }
+
+                    S = E;
+                }
+            }
+
+            return outputList;
+        }
+
+        private static bool IsInside(Vector3 A, Vector3 B, Vector3 P)
+        {
+            return (A.x - P.x) * (B.y - P.y) > (A.y - P.y) * (B.x - P.x);
+        }
+
+        private static Vector3 ComputeIntersection(Vector3 A, Vector3 B, Vector3 S, Vector3 E)
+        {
+            float a1 = E.y - S.y;
+            float b1 = S.x - E.x;
+            float c1 = a1 * S.x + b1 * S.y;
+
+            float a2 = B.y - A.y;
+            float b2 = A.x - B.x;
+            float c2 = a2 * A.x + b2 * A.y;
+
+            float determinant = a1 * b2 - a2 * b1;
+
+            if (determinant == 0)
+            {
+                // The lines are parallel.
+                return Vector3.zero;
+            }
+            else
+            {
+                float x = (b2 * c1 - b1 * c2) / determinant;
+                float y = (a1 * c2 - a2 * c1) / determinant;
+
+                return new Vector3(x, y, 0);
+            }
+        }
     }
     
     /**
